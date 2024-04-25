@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.10)
 # set the project name
 project(synchronized_value VERSION 1.0)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 17) # Set to 20 for enabling synchronized_value_nonstrict
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 # find_package(Catch2 3 REQUIRED)

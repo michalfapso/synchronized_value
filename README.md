@@ -15,9 +15,20 @@
 
 Accessing a single value:
 ```cpp
+// Wrapping an int protected by an std::mutex (by default)
+synchronized_value<int> syncval{10};
+// The wrapped int can be accessed only inside synchronize():
+synchronize(syncval,
+    [](int& val){
+        val += 1;
+    });
+```
+
+Using `std::shared_mutex` and returning a value back to the caller:
+```cpp
 synchronized_value<int, std::shared_mutex> syncval{10};
 int res = synchronize(
-    syncval.writer(), // or just syncval1 or syncval.reader() for a read-only access
+    syncval.writer(), // or just syncval (writer is default), or for a read-only access use syncval.reader() 
     [](int& val){
         val += 1;
         return val;
