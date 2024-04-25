@@ -1,7 +1,11 @@
-`synchronized_value` is a header-only wrapper class for protecting data with a mutex.
+`synchronized_value` is a C++ header-only wrapper class for protecting data with a mutex.
 
 # Requirements
 
+- C++17 compiler
+- For tests:
+  - CMake
+  - Catch2 (automatically fetched by CMakeLists.txt)
 
 # Usage
 
@@ -34,10 +38,27 @@ auto res = synchronize(
 std::cout << "res: "<<std::get<0>(res)<<" "<<std::get<1>(res) << std::endl;
 ```
 
-For direct access to the wrapped value, use `synchronized_value_nonstrict`:
+For direct access to the wrapped value, use `synchronized_value_nonstrict` (C++20 required):
 ```cpp
 synchronized_value_nonstrict<int, std::shared_mutex> syncval{10};
 syncval.valueUnprotected() += 1;
 ```
 
 For more usage examples, see `synchronized_value_test.cpp`
+
+# Tests
+```
+mkdir build
+cd build
+cmake ..
+```
+Now on Windows with MSYS2:
+```
+ninja
+./tests.exe
+```
+And on Linux and macOS:
+```
+make
+./tests
+```
