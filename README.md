@@ -1,3 +1,5 @@
+![workflow](https://github.com/michalfapso/synchronized_value/actions/workflows/cmake-multi-platform.yml/badge.svg)
+
 `synchronized_value` is a C++ header-only wrapper class for protecting data with a mutex.
 
 # Requirements
