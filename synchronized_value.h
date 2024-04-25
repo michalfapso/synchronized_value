@@ -26,11 +26,6 @@ public:
         const syncval_type& mSyncVal;
     };
 
-#if __cplusplus >= 202002L // c++20 and newer
-    synchronized_value() requires std::is_default_constructible<T>::value
-    {}
-#endif
-
     // Forward constructor args to mValue's constructor
     template <typename... Args>
     explicit synchronized_value(Args&&... args)

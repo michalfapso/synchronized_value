@@ -48,7 +48,7 @@ public:
 
 class Big2 {
 public:
-    // Big() = default;
+    Big2() = default;
     Big2(int val1, int val2) : mVal1(val1), mVal2(val2) {
         // DBG(this<<" "<<*this<<" Big(int)");
     }
@@ -56,14 +56,31 @@ public:
     int mVal2 = 0;
 };
 
-TEST_CASE("complex object", "[synchronized_value]")
+TEST_CASE("constructors", "[synchronized_value]")
 {
-    synchronized_value<Big2, std::shared_mutex> syncval{Big2{10, 20}};
-    // synchronized_value<Big2, std::shared_mutex> syncval{10, 20};
+    SECTION("default constructor") {
+        synchronized_value<Big2, std::shared_mutex> syncval{};
+        synchronize(syncval.reader(), [](const Big2& val){
+            REQUIRE(val.mVal1 == 0);
+            REQUIRE(val.mVal2 == 0);
+        });
+    }
 
-    synchronize(syncval.reader(), [](const Big2& val){
-        DBG("Big2 vals:"<<val.mVal1<<" "<<val.mVal2);
-    });
+    SECTION("default constructor") {
+        synchronized_value<Big2, std::shared_mutex> syncval{10, 20};
+        synchronize(syncval.reader(), [](const Big2& val){
+            REQUIRE(val.mVal1 == 10);
+            REQUIRE(val.mVal2 == 20);
+        });
+    }
+
+    SECTION("copy constructor") {
+        synchronized_value<Big2, std::shared_mutex> syncval{Big2{10, 20}};
+        synchronize(syncval.reader(), [](const Big2& val){
+            REQUIRE(val.mVal1 == 10);
+            REQUIRE(val.mVal2 == 20);
+        });
+    }
 }
 
 TEST_CASE("sequential", "[synchronized_value]")
