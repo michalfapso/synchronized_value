@@ -46,7 +46,7 @@
 
 #if __cplusplus >= 202002L // c++20 and newer
 template<typename T, is_lockable Mutex = std::mutex, bool IsStrictlyProtected = true>
-#else
+#else // before c++20
 template<typename T, typename    Mutex = std::mutex, bool IsStrictlyProtected = true, typename = std::enable_if_t<is_lockable<Mutex>>>
 #endif
 class synchronized_value
@@ -97,6 +97,11 @@ public:
 #if __cplusplus >= 202002L // c++20 and newer
           value_type& valueUnprotected()       requires(!is_strictly_protected) { return mValue; }
     const value_type& valueUnprotected() const requires(!is_strictly_protected) { return mValue; }
+#else // before c++20
+    template<bool is = IsStrictlyProtected, typename = std::enable_if_t<!is>>
+          value_type& valueUnprotected()       { return mValue; }
+    template<bool is = IsStrictlyProtected, typename = std::enable_if_t<!is>>
+    const value_type& valueUnprotected() const { return mValue; }
 #endif
     
           AccessShared      shared()       { return AccessShared     (*this); }
@@ -160,6 +165,7 @@ auto synchronize(F&& f, Args&... values) -> std::invoke_result_t<F, typename Arg
     return std::forward<F>(f)(values.mSyncVal.value()...);
 }
 
+// Without specifying accessors, default to .unique()
 // f: function with protected access to values
 // values: synchronized_value<> with AccessUnique accessor (unique_lock)
 template<class F, class ... Args>

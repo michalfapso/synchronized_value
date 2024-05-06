@@ -241,8 +241,6 @@ TEST_CASE("sequential", "[synchronized_value]")
     }
 }
 
-
-#if __cplusplus >= 202002L // c++20 and newer
 TEST_CASE("nonstrict", "[synchronized_value]")
 {
     synchronized_value_nonstrict<Big, std::shared_mutex> syncval(13);
@@ -250,7 +248,6 @@ TEST_CASE("nonstrict", "[synchronized_value]")
     syncval.valueUnprotected().mVal += 1;
     REQUIRE(syncval.valueUnprotected().mVal == 14);
 }
-#endif
 
 TEMPLATE_TEST_CASE("const", "[synchronized_value]", std::mutex, std::shared_mutex)
 {

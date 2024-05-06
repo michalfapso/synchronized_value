@@ -51,7 +51,7 @@ auto res = synchronize(
 std::cout << "res: "<<std::get<0>(res)<<" "<<std::get<1>(res) << std::endl;
 ```
 
-For direct access to the wrapped value, use `synchronized_value_nonstrict` (C++20 required):
+For direct access to the wrapped value, use `synchronized_value_nonstrict`:
 ```cpp
 synchronized_value_nonstrict<int, std::shared_mutex> syncval{10};
 syncval.valueUnprotected() += 1;
