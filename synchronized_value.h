@@ -2,7 +2,53 @@
 #include <shared_mutex>
 #include <type_traits>
 
-template<typename T, typename Mutex = std::mutex, bool IsStrictlyProtected = true>
+#if __cplusplus >= 202002L // c++20 and newer
+    template<typename T>
+    concept is_shared_lockable = requires(T val) {
+        {val.lock_shared()};
+        {val.unlock_shared()};
+        {val.try_lock_shared()};
+    };
+
+    template<typename T>
+    concept is_lockable = requires(T &val) {
+        {val.lock()};
+        {val.unlock()};
+        {val.try_lock()} -> std::same_as<bool>;
+    };
+#else // before c++20:
+    // is_shared_lockable
+    template<typename, typename = void>
+    constexpr bool is_shared_lockable = false;
+     
+    template<typename T>
+    constexpr bool is_shared_lockable<
+        T,
+        std::void_t<decltype(std::declval<T>().lock_shared()),
+                    decltype(std::declval<T>().unlock_shared()),
+                    decltype(std::declval<T>().try_lock_shared())
+        >
+    > = true; 
+
+    // is_lockable
+    template<typename, typename = void>
+    constexpr bool is_lockable = false;
+     
+    template<typename T>
+    constexpr bool is_lockable<
+        T,
+        std::void_t<decltype(std::declval<T>().lock()),
+                    decltype(std::declval<T>().unlock()),
+                    decltype(std::declval<T>().try_lock())
+        >
+    > = true; 
+#endif
+
+#if __cplusplus >= 202002L // c++20 and newer
+template<typename T, is_lockable Mutex = std::mutex, bool IsStrictlyProtected = true>
+#else
+template<typename T, typename    Mutex = std::mutex, bool IsStrictlyProtected = true, typename = std::enable_if_t<is_lockable<Mutex>>>
+#endif
 class synchronized_value
 {
 public:
@@ -10,19 +56,27 @@ public:
     using mutex_type = Mutex;
     static constexpr bool is_strictly_protected = IsStrictlyProtected;
 
-    struct Writer {
+    struct AccessUniqueConst {
         using syncval_type = synchronized_value<T, Mutex>; 
         using lock_type = std::unique_lock<typename syncval_type::mutex_type>;
 
-        Writer(syncval_type& val) : mSyncVal(val) {}
+        AccessUniqueConst(const syncval_type& val) : mSyncVal(val) {}
+        const syncval_type& mSyncVal;
+    };
+
+    struct AccessUnique {
+        using syncval_type = synchronized_value<T, Mutex>; 
+        using lock_type = std::unique_lock<typename syncval_type::mutex_type>;
+
+        AccessUnique(syncval_type& val) : mSyncVal(val) {}
         syncval_type& mSyncVal;
     };
 
-    struct Reader {
+    struct AccessShared {
         using syncval_type = synchronized_value<T, Mutex>; 
         using lock_type = std::shared_lock<typename syncval_type::mutex_type>;
 
-        Reader(syncval_type& val) : mSyncVal(val) {}
+        AccessShared(const syncval_type& val) : mSyncVal(val) {}
         const syncval_type& mSyncVal;
     };
 
@@ -45,9 +99,16 @@ public:
     const value_type& valueUnprotected() const requires(!is_strictly_protected) { return mValue; }
 #endif
     
-    Reader reader() { return Reader(*this); }
-    Writer writer() { return Writer(*this); }
-
+          AccessShared      shared()       { return AccessShared     (*this); }
+    const AccessShared      shared() const { return AccessShared     (*this); }
+          AccessUnique      unique()       { return AccessUnique     (*this); }
+    // const unique() with shared_mutex uses shared locking
+    template <typename M = Mutex, typename = std::enable_if_t< is_shared_lockable<M>>>
+    const AccessShared      unique() const { return AccessShared     (*this); }
+    // const unique() with a standard mutex uses exclusive locking
+    template <typename M = Mutex, typename = std::enable_if_t<!is_shared_lockable<M>>>
+    const AccessUniqueConst unique() const { return AccessUniqueConst(*this); }
+    
     // To be able to access private value() from within synchronize()
     template<class F, class Arg>
     friend
@@ -71,7 +132,7 @@ using synchronized_value_nonstrict = synchronized_value<T, Mutex, false>;
 
 // Single synchronized_value
 // f: function with protected access to the value
-// values: Reader | Writer accessor
+// values: AccessShared | AccessUnique accessor
 template<class F, class Arg>
 auto synchronize(F&& f, Arg& value) -> std::invoke_result_t<F, typename Arg::syncval_type::value_type&>
 {
@@ -84,7 +145,7 @@ auto synchronize(F&& f, Arg& value) -> std::invoke_result_t<F, typename Arg::syn
 
 // Multiple synchronized_values
 // f: function with protected access to values
-// values: Reader | Writer accessors
+// values: AccessShared | AccessUnique accessors
 template<class F, class ... Args>
 auto synchronize(F&& f, Args&... values) -> std::invoke_result_t<F, typename Args::syncval_type::value_type&...>
 {
@@ -100,11 +161,11 @@ auto synchronize(F&& f, Args&... values) -> std::invoke_result_t<F, typename Arg
 }
 
 // f: function with protected access to values
-// values: synchronized_value<> with Writer accessor (unique_lock)
+// values: synchronized_value<> with AccessUnique accessor (unique_lock)
 template<class F, class ... Args>
 auto synchronize(F&& f, Args&... values) -> std::invoke_result_t<F, typename Args::value_type&...>
 {
-    return synchronize(std::forward<F>(f), values.writer()...);
+    return synchronize(std::forward<F>(f), values.unique()...);
 }
 
 

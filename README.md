@@ -30,7 +30,7 @@ Using `std::shared_mutex` and returning a value back to the caller:
 ```cpp
 synchronized_value<int, std::shared_mutex> syncval{10};
 int res = synchronize(
-    syncval.writer(), // or just syncval (writer is default), or for a read-only access use syncval.reader() 
+    syncval.unique(), // or just syncval (unique is default), or for a read-only access use syncval.shared()
     [](int& val){
         val += 1;
         return val;
@@ -43,7 +43,7 @@ Accessing multiple values:
 synchronized_value<int, std::shared_mutex> syncval1{10};
 synchronized_value<int, std::shared_mutex> syncval2{20};
 auto res = synchronize(
-    syncval1.writer(), syncval2.reader(), 
+    syncval1.unique(), syncval2.shared(),
     [](int& val1, const int& val2){
         val1 += val2;
         return std::make_tuple(val1, val2);
